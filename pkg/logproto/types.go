@@ -1,22 +1,20 @@
 package logproto
 
 import (
-	fmt "fmt"
-	io "io"
-	time "time"
+	"fmt"
+	"io"
+	"time"
 )
 
+// Stream contains a unique labels set as a string and a set of entries for it.
+// We are not using the proto generated version but this custom one so that we
+// can improve serialization see benchmark.
 type Stream struct {
 	Labels  string  `protobuf:"bytes,1,opt,name=labels,proto3" json:"labels"`
 	Entries []Entry `protobuf:"bytes,2,rep,name=entries,proto3,customtype=EntryAdapter" json:"entries"`
 }
 
-type batch struct {
-	streams   map[string]*Stream
-	bytes     int
-	createdAt time.Time
-}
-
+// Entry is a log entry with a timestamp.
 type Entry struct {
 	Timestamp time.Time `protobuf:"bytes,1,opt,name=timestamp,proto3,stdtime" json:"ts"`
 	Line      string    `protobuf:"bytes,2,opt,name=line,proto3" json:"line"`
@@ -54,6 +52,38 @@ func (m *Stream) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	return i, nil
+}
+
+func (m *Entry) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Entry) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	dAtA[i] = 0xa
+	i++
+	i = encodeVarintLogproto(dAtA, i, uint64(SizeOfStdTime(m.Timestamp)))
+	n5, err := StdTimeMarshalTo(m.Timestamp, dAtA[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n5
+	if len(m.Line) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintLogproto(dAtA, i, uint64(len(m.Line)))
+		i += copy(dAtA[i:], m.Line)
 	}
 	return i, nil
 }
@@ -316,28 +346,6 @@ func (m *Stream) Size() (n int) {
 	return n
 }
 
-func (m *Entry) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	dAtA[i] = 0xa
-	i++
-	i = encodeVarintLogproto(dAtA, i, uint64(SizeOfStdTime(m.Timestamp)))
-	n5, err := StdTimeMarshalTo(m.Timestamp, dAtA[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	if len(m.Line) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintLogproto(dAtA, i, uint64(len(m.Line)))
-		i += copy(dAtA[i:], m.Line)
-	}
-	return i, nil
-}
-
 func (m *Entry) Size() (n int) {
 	if m == nil {
 		return 0
@@ -351,4 +359,64 @@ func (m *Entry) Size() (n int) {
 		n += 1 + l + sovLogproto(uint64(l))
 	}
 	return n
+}
+
+func (m *Stream) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	that1, ok := that.(*Stream)
+	if !ok {
+		that2, ok := that.(Stream)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Labels != that1.Labels {
+		return false
+	}
+	if len(m.Entries) != len(that1.Entries) {
+		return false
+	}
+	for i := range m.Entries {
+		if !m.Entries[i].Equal(that1.Entries[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (m *Entry) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	that1, ok := that.(*Entry)
+	if !ok {
+		that2, ok := that.(Entry)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if !m.Timestamp.Equal(that1.Timestamp) {
+		return false
+	}
+	if m.Line != that1.Line {
+		return false
+	}
+	return true
 }
