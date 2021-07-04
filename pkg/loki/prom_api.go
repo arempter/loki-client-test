@@ -25,3 +25,4 @@ func (p promApi) Decode(buf []byte) (*logproto.PushRequest, error) {
 	}
 	return &logEntry, nil
 }
+

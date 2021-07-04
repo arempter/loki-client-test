@@ -29,14 +29,6 @@ func main() {
 	}
 	go c.Run()
 
-	// c.Send(nil, time.Now(), "test line 5")
-	// c.Send(nil, time.Now(), "test line 6")
-	// c.Send(nil, time.Now(), "test line 7")
-	// c.Send(nil, time.Now(), "test line 8")
-	// c.Send(nil, time.Now(), "test line 9")
-	// c.Send(nil, time.Now(), "test line 10")
-	// c.Send(nil, time.Now(), "test line 11")
-
 	http.HandleFunc("/loki/api/v1/push", getPromHandler(c))
 	log.Fatal(http.ListenAndServe(":3101", nil))
 }
